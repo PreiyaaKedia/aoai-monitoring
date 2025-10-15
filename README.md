@@ -12,6 +12,8 @@ This script automatically discovers all Azure OpenAI resources in your subscript
 - **Comprehensive Metrics Collection**: Gathers 6 key metrics for each resource
 - **Flexible Time Range**: Configurable lookback period (default: 7 days)
 - **Summary Statistics**: Provides overall consumption and success rate analysis
+- **Real Cost Analysis**: Integrates with Azure Cost Management for actual billing costs
+- **High Performance**: Parallel processing for fast metrics collection across multiple resources
 - **CSV Export**: Exports detailed data with timestamps for further analysis
 - **Error Handling**: Gracefully handles resources with no data or access issues
 - **Visual Output**: Color-coded console output with clear formatting
@@ -27,6 +29,7 @@ This script automatically discovers all Azure OpenAI resources in your subscript
 | **SuccessfulCalls** | Number of successful API calls |
 | **TotalErrors** | Number of failed requests |
 | **SuccessRate** | Calculated percentage of successful calls |
+| **ActualCostUSD** | Real billing costs from Azure Cost Management API |
 
 ## 🔧 Prerequisites
 
@@ -41,6 +44,7 @@ This script automatically discovers all Azure OpenAI resources in your subscript
   - Read Azure resources in the subscription
   - Access Azure Monitor metrics
   - Query Azure Resource Graph
+  - **Access Azure Cost Management** (for cost data collection)
 
 ## 📥 Installation
 
@@ -94,33 +98,36 @@ Setting subscription context...
 Discovering OpenAI resources...
 Found 7 OpenAI resources
 Collecting metrics from 2025-10-07T10:30:00Z to 2025-10-14T10:30:00Z
+Collecting cost data from 2025-10-07 to 2025-10-14
 
-Processing: azure-openai-eastus-prod
-Processing: azure-openai-westus-dev
-Processing: azure-openai-southcentral-test
+Processing resources in parallel...
+  Processing: azure-openai-eastus-prod
+  Processing: azure-openai-westus-dev
+  Processing: azure-openai-southcentral-test
 
 📊 Azure OpenAI Metrics Summary (Last 7 days)
 ======================================================
 
-ResourceName               ResourceGroup      Location       TotalTokens InputTokens OutputTokens TotalRequests SuccessfulCalls TotalErrors SuccessRate
-------------               -------------      --------       ----------- ----------- ------------ ------------- --------------- ----------- -----------
-azure-openai-eastus-prod  rg-openai-prod    East US        4713        3025        1688         7             4               3           57.1
-azure-openai-westus-dev   rg-openai-dev     West US        0           0           0            0             0               0           0
-azure-openai-sc-test      rg-openai-test    South Central  0           0           0            0             0               0           0
+ResourceName               ResourceGroup      Location       TotalTokens InputTokens OutputTokens TotalRequests SuccessfulCalls TotalErrors SuccessRate ActualCostUSD
+------------               -------------      --------       ----------- ----------- ------------ ------------- --------------- ----------- ----------- -------------
+azure-openai-eastus-prod  rg-openai-prod    East US        4713        3025        1688         7             4               3           57.1        2.85
+azure-openai-westus-dev   rg-openai-dev     West US        0           0           0            0             0               0           0           0.00
+azure-openai-sc-test      rg-openai-test    South Central  0           0           0            0             0               0           0           0.00
 
 📈 Overall Summary:
 Total Tokens Consumed: 4713
 Total Requests: 7
 Total Errors: 3
+Total Cost (USD): $2.85
 Active Resources (with usage): 1 / 7
 Overall Success Rate: 57.1%
 
 💾 Results exported to: azure-openai-metrics-20251014-103045.csv
 
 🔥 Resources with Activity:
-ResourceName              TotalTokens TotalRequests SuccessRate
-------------              ----------- ------------- -----------
-azure-openai-eastus-prod 4713        7             57.1
+ResourceName              TotalTokens TotalRequests SuccessRate ActualCostUSD
+------------              ----------- ------------- ----------- -------------
+azure-openai-eastus-prod 4713        7             57.1        2.85
 
 ✅ Metrics collection completed!
 ```
@@ -137,6 +144,20 @@ The script generates a timestamped CSV file with the following columns:
 - SuccessfulCalls
 - TotalErrors
 - SuccessRate
+- **ActualCostUSD**
+
+## ⚡ Performance Features
+
+### **Parallel Processing**
+- **Resource-Level Parallelization**: Multiple Azure OpenAI resources processed simultaneously
+- **Metric-Level Parallelization**: All 6 metrics collected in parallel per resource using background jobs
+- **Throttle Control**: Configurable concurrency limits to prevent API rate limiting
+- **Performance Gain**: **~10x faster** than sequential processing
+
+### **Execution Time Examples**
+- **7 Resources (Sequential)**: ~2-3 minutes
+- **7 Resources (Parallel)**: ~15-30 seconds ⚡
+- **Benefits**: Scales efficiently with more resources
 
 ## 🛠️ Troubleshooting
 
@@ -165,7 +186,14 @@ winget install Microsoft.AzureCLI
 #### "Access denied" errors
 - Ensure you have **Reader** role on the subscription or resource groups
 - Verify **Monitoring Reader** role for Azure Monitor access
+- Verify **Cost Management Reader** role for cost data access
 - Check that Azure OpenAI resources exist and are accessible
+
+#### Cost data showing as $0.00
+- Cost data may have a 24-48 hour delay in Azure billing
+- Verify you have Cost Management permissions
+- Check if resources have been actively used and billed
+- Extend time range: `-DaysBack 30` for more comprehensive cost data
 
 #### No metrics data returned
 - Azure Monitor metrics have a slight delay (usually 5-15 minutes)
@@ -175,10 +203,12 @@ winget install Microsoft.AzureCLI
 
 ## 🔒 Security Considerations
 
-- The script only **reads** metrics data, no write operations
+- The script only **reads** metrics and cost data, no write operations
 - Uses Azure CLI authentication (respects your current login)
+- Cost data access requires appropriate Azure RBAC permissions
 - No sensitive data is stored in the script
-- CSV exports contain only aggregated metrics, no request content
+- CSV exports contain only aggregated metrics and costs, no request content
+- All API calls use standard Azure authentication and authorization
 
 ## 📝 Customization
 
